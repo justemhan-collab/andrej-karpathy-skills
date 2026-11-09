@@ -1,0 +1,34 @@
+{
+  "_comment": "Python 추출기(swformat/COM) → HTML 검토기 인터페이스 예시. 값은 모두 가상의 예시 데이터임.",
+  "source": "com",
+  "titleblock": {
+    "drawingNo": "JS-SAMPLE-0003",
+    "title": "GUIDE BLOCK",
+    "type": "PART",
+    "date": "2026-11-06",
+    "prepared": { "value": "H.LEE", "date": "2026-11-05" },
+    "checked": { "value": "J.KIM", "date": "2026-11-06" },
+    "approved": { "value": "", "date": "" },
+    "itemCode": "JS10-0003",
+    "scale": "1:1",
+    "material": "A5052",
+    "finish": ""
+  },
+  "bom": [
+    { "no": 1, "dwgNo": "JS-SAMPLE-0003-01", "partName": "GUIDE BLOCK", "size": "60x40x20", "qty": 2, "material": "A5052", "remark": "", "instances": 2 },
+    { "no": 2, "dwgNo": "MISUMI SHCB4-12", "partName": "BOLT M4", "size": "M4x12", "qty": 4, "material": "SUS304", "remark": "PURCHASED", "instances": 6 }
+  ],
+  "dims": [
+    { "text": "60 ±0.05", "sheet": 1, "view": "FRONT VIEW" },
+    { "text": "40", "sheet": 1, "view": "FRONT VIEW" },
+    { "text": "Ø8 H7", "sheet": 1, "view": "TOP VIEW" },
+    { "text": "C0.5", "sheet": 1, "view": "FRONT VIEW" }
+  ],
+  "notes": [
+    { "kind": "General", "text": "1. GENERAL TOLERANCE: KS B ISO 2768-m" },
+    { "kind": "General", "text": "2. UNSPECIFIED CHAMFER C0.5" },
+    { "kind": "General", "text": "3. FINISH: CLEAR ANODIZING" }
+  ],
+  "views": [ { "name": "FRONT VIEW", "scale": "1:1", "sheet": 1 }, { "name": "TOP VIEW", "scale": "1:1", "sheet": 1 } ],
+  "sheets": [ { "name": "Sheet1", "size": "A3", "scale": "1:1" } ]
+}

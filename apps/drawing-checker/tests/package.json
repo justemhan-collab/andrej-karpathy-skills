@@ -1,0 +1,13 @@
+{
+  "name": "drawing-checker-e2e",
+  "private": true,
+  "description": "도면 검토기 E2E 테스트 (CDN 대신 로컬 npm 패키지로 라이브러리 제공)",
+  "scripts": { "test": "node e2e.test.js" },
+  "devDependencies": {
+    "dxf-parser": "1.1.2",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174",
+    "playwright": "^1.50.0",
+    "xlsx": "0.18.5"
+  }
+}

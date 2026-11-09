@@ -50,3 +50,18 @@
 - 레이아웃 인식은 텍스트 위치 기반 휴리스틱입니다. 사내 도면 양식에서 라벨·헤더 인식이 틀리면 설정의 `labels`·`bomHeaders`를 고치세요.
 - PDF 레드마킹은 Helvetica 표준 글꼴만 써서 한글 대신 영문 규칙명을 표기합니다.
 - 회전된 페이지(/Rotate)는 박스 위치가 어긋날 수 있습니다.
+
+## 6. Python 추출기 연동 (JSON)
+
+- 형식 예시: `samples/drawing-data.sample.json`
+- 필드: `titleblock`(서명 항목은 `{value, date}`), `bom[]`(`instances` = COM에서 얻은 실제 인스턴스 수), `dims[]`(`text`, `sheet`, `view`, 선택 `bbox`), `notes[]`(`kind`, `text`), `views[]`, `sheets[]`
+- `prompts/swdrw-checker/` Phase 2·6의 Python 추출기가 이 형식으로 출력하면 HTML 검토기에서 바로 검사됨
+
+## 7. 테스트
+
+```bash
+cd apps/drawing-checker/tests && npm install && npm test
+```
+
+- 샘플 PDF 2건(지적 건수·규칙), BOM 추출, Excel·레드마킹 저장, JSON 입력, DXF 입력, 스크립트 오류 여부를 검사 (10건)
+- CDN 대신 로컬 npm 패키지로 라이브러리를 제공하므로 오프라인에서도 실행됨
