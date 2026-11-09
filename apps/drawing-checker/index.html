@@ -1,0 +1,1219 @@
+<title>JUSTEM 도면 검토기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: drafting-table workbench — command bar on top, issue ledger left, sheet viewer right, extracted data below the sheet */
+:root {
+  --paper: #eef0ec;
+  --surface: #fbfbf9;
+  --sunken: #e4e7e2;
+  --ink: #1c232d;
+  --muted: #5b6470;
+  --line: #cfd4cd;
+  --accent: #2c5a86;
+  --accent-ink: #ffffff;
+  --red: #c8322a;
+  --red-soft: #f7dedb;
+  --amber: #a86a12;
+  --amber-soft: #f6e8cf;
+  --info: #5f6b78;
+  --info-soft: #e3e7eb;
+  --ok: #2f7a4a;
+  --sheet-bg: #ffffff;
+  --font-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161b; --surface: #191e25; --sunken: #20262e; --ink: #e5e8ec; --muted: #9aa3ad;
+    --line: #2d343d; --accent: #82aad3; --accent-ink: #0f1419; --red: #ff6f62; --red-soft: #3a1f1d;
+    --amber: #e2aa52; --amber-soft: #352a17; --info: #a3adb8; --info-soft: #262c34; --ok: #6cc28c;
+    --sheet-bg: #ffffff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161b; --surface: #191e25; --sunken: #20262e; --ink: #e5e8ec; --muted: #9aa3ad;
+  --line: #2d343d; --accent: #82aad3; --accent-ink: #0f1419; --red: #ff6f62; --red-soft: #3a1f1d;
+  --amber: #e2aa52; --amber-soft: #352a17; --info: #a3adb8; --info-soft: #262c34; --ok: #6cc28c;
+  --sheet-bg: #ffffff; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink); font-family: var(--font-ui); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 32px;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* command bar */
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-block: 14px; border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: baseline; gap: 10px; margin-right: auto; min-width: 0; }
+.brand h1 { margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.brand .code { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface); padding: 7px 12px; border-radius: var(--r); cursor: pointer; font-size: 13px; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn input[type=file] { display: none; }
+
+/* summary strip */
+.summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 22px; padding-block: 12px; font-size: 13px; color: var(--muted); }
+.summary .count { display: inline-flex; align-items: baseline; gap: 6px; }
+.summary .count b { font-family: var(--font-mono); font-size: 20px; color: var(--ink); font-weight: 500; }
+.summary .count.err b { color: var(--red); }
+.summary .count.warn b { color: var(--amber); }
+.sample-flag { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--amber-soft); color: var(--amber); font-weight: 600; }
+
+/* workbench */
+.bench { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel-head h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .02em; margin-right: auto; }
+
+/* file list */
+.files { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 2px; max-height: 180px; overflow: auto; }
+.files li button { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; text-align: left; padding: 6px 8px; border: 0; background: transparent; border-radius: 4px; cursor: pointer; }
+.files li button:hover { background: var(--sunken); }
+.files li button[aria-current="true"] { background: var(--sunken); box-shadow: inset 3px 0 0 var(--accent); }
+.files .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.files .fcount { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.files .fcount .e { color: var(--red); }
+
+/* issue ledger */
+.filters { display: flex; gap: 4px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 99px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.issues { list-style: none; margin: 0; padding: 0; max-height: 62vh; overflow: auto; }
+.issue { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; border-left: 3px solid transparent; }
+.issue:hover { background: var(--sunken); }
+.issue[aria-selected="true"] { background: var(--sunken); border-left-color: var(--red); }
+.issue .no { font-family: var(--font-mono); font-size: 12px; color: var(--muted); padding-top: 1px; }
+.issue .title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+.issue .detail { font-size: 13px; color: var(--ink); margin-top: 2px; overflow-wrap: anywhere; }
+.issue .meta { font-size: 12px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+.issue .fix { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.issue .fix::before { content: "조치 · "; color: var(--accent); font-weight: 600; }
+.sev { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 99px; letter-spacing: .03em; }
+.sev.ERROR { background: var(--red-soft); color: var(--red); }
+.sev.WARN { background: var(--amber-soft); color: var(--amber); }
+.sev.INFO { background: var(--info-soft); color: var(--info); }
+.rid { font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-weight: 400; }
+.empty { padding: 24px 16px; color: var(--muted); font-size: 13px; }
+
+/* viewer */
+.viewer-tools { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; font-size: 12px; color: var(--muted); }
+.viewer-tools label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; border: 2px solid; }
+.sheet-wrap { padding: 12px; overflow: auto; background: var(--sunken); }
+.sheet { position: relative; margin: 0 auto; background: var(--sheet-bg); box-shadow: 0 1px 3px rgba(0,0,0,.18); max-width: 100%; }
+.sheet canvas { display: block; width: 100%; height: auto; }
+.overlay { position: absolute; inset: 0; pointer-events: none; }
+.box { position: absolute; border: 1.5px solid; pointer-events: auto; }
+.box.layer-tb { border-color: rgba(44,90,134,.55); background: rgba(44,90,134,.05); pointer-events: none; }
+.box.layer-bom { border-color: rgba(28,130,120,.6); background: rgba(28,130,120,.05); pointer-events: none; }
+.box.layer-dim { border-color: rgba(90,100,112,.55); border-style: dashed; pointer-events: none; }
+.box.layer-note { border-color: rgba(120,70,160,.6); background: rgba(120,70,160,.05); pointer-events: none; }
+.box.issue-box { border: 2px solid #d12b22; background: rgba(209,43,34,.07); cursor: pointer; }
+.box.issue-box.sel { background: rgba(209,43,34,.2); box-shadow: 0 0 0 3px rgba(209,43,34,.35); }
+.tag { position: absolute; left: -11px; top: -11px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: #d12b22; color: #fff; font: 600 11px/20px var(--font-mono); text-align: center; }
+.pager { display: flex; gap: 4px; align-items: center; }
+.no-image { padding: 48px 16px; text-align: center; color: var(--muted); }
+
+/* data tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; padding: 6px 8px 0; border-bottom: 1px solid var(--line); }
+.tab { border: 0; background: transparent; padding: 7px 12px; font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); font-weight: 600; }
+.table-wrap { overflow-x: auto; max-height: 420px; overflow-y: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--surface); font-weight: 600; font-size: 12px; color: var(--muted); white-space: nowrap; }
+td.num, td.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+td.blank { color: var(--red); font-style: italic; }
+.src { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+/* settings */
+.settings { margin-top: 16px; }
+.settings summary { cursor: pointer; padding: 10px 12px; font-weight: 600; font-size: 13px; }
+.settings .body { padding: 0 12px 12px; display: grid; gap: 10px; }
+.settings p { margin: 0; font-size: 13px; color: var(--muted); max-width: 72ch; }
+.settings textarea { width: 100%; min-height: 320px; font-family: var(--font-mono); font-size: 12px; line-height: 1.45; background: var(--sunken); border: 1px solid var(--line); border-radius: var(--r); padding: 10px; resize: vertical; }
+.settings .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.msg { font-size: 13px; }
+.msg.err { color: var(--red); }
+.msg.ok { color: var(--ok); }
+
+.toast { position: fixed; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--surface); padding: 10px 14px; border-radius: var(--r); font-size: 13px; max-width: min(420px, calc(100vw - 32px)); z-index: 20; }
+.drop-hint { position: fixed; inset: 0; background: rgba(44,90,134,.12); border: 3px dashed var(--accent); display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 600; color: var(--accent); z-index: 30; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .box.issue-box.sel { transition: background .15s; } }
+</style>
+
+<header class="bar">
+  <div class="brand">
+    <h1>도면 검토기</h1>
+    <span class="code">DRAWING REVIEW · PDF / DXF / JSON</span>
+  </div>
+  <div class="actions">
+    <label class="btn primary" for="fileInput">파일 열기<input id="fileInput" type="file" multiple accept=".pdf,.dxf,.json"></label>
+    <label class="btn" for="folderInput">폴더 일괄<input id="folderInput" type="file" webkitdirectory multiple></label>
+    <button class="btn" id="btnSample" type="button">샘플 다시 불러오기</button>
+    <button class="btn" id="btnExcel" type="button">Excel 저장</button>
+    <button class="btn" id="btnRedmark" type="button">레드마킹 PDF 저장</button>
+  </div>
+</header>
+
+<section class="summary" id="summary" aria-live="polite"></section>
+
+<main class="bench">
+  <div style="display:grid; gap:16px; min-width:0">
+    <section class="panel" aria-labelledby="hFiles">
+      <div class="panel-head"><h2 id="hFiles">검토 파일</h2></div>
+      <ul class="files" id="fileList"></ul>
+    </section>
+    <section class="panel" aria-labelledby="hIssues">
+      <div class="panel-head">
+        <h2 id="hIssues">지적 사항</h2>
+        <div class="filters" role="group" aria-label="심각도 필터">
+          <button class="chip" type="button" data-f="ALL" aria-pressed="true">전체</button>
+          <button class="chip" type="button" data-f="ERROR" aria-pressed="false">오류</button>
+          <button class="chip" type="button" data-f="WARN" aria-pressed="false">경고</button>
+          <button class="chip" type="button" data-f="INFO" aria-pressed="false">정보</button>
+        </div>
+      </div>
+      <ul class="issues" id="issueList" role="listbox" aria-label="지적 사항 목록"></ul>
+    </section>
+  </div>
+
+  <div style="display:grid; gap:16px; min-width:0">
+    <section class="panel" aria-labelledby="hSheet">
+      <div class="panel-head">
+        <h2 id="hSheet">도면</h2>
+        <div class="viewer-tools">
+          <label><input type="checkbox" id="lyIssue" checked> <span class="swatch" style="border-color:#d12b22"></span>지적</label>
+          <label><input type="checkbox" id="lyTb"> <span class="swatch" style="border-color:rgba(44,90,134,.8)"></span>타이틀블록</label>
+          <label><input type="checkbox" id="lyBom"> <span class="swatch" style="border-color:rgba(28,130,120,.8)"></span>BOM</label>
+          <label><input type="checkbox" id="lyDim"> <span class="swatch" style="border-color:rgba(90,100,112,.8)"></span>치수</label>
+          <label><input type="checkbox" id="lyNote"> <span class="swatch" style="border-color:rgba(120,70,160,.8)"></span>노트</label>
+        </div>
+        <div class="pager">
+          <button class="btn" type="button" id="pgPrev" aria-label="이전 시트">◀</button>
+          <span class="mono" id="pgLabel">-</span>
+          <button class="btn" type="button" id="pgNext" aria-label="다음 시트">▶</button>
+        </div>
+      </div>
+      <div class="sheet-wrap" id="sheetWrap">
+        <div class="sheet" id="sheet"><canvas id="canvas"></canvas><div class="overlay" id="overlay"></div></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="hData">
+      <div class="panel-head"><h2 id="hData">추출 데이터</h2><span class="src" id="dataSrc"></span></div>
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" type="button" data-t="tb" aria-selected="true">타이틀블록</button>
+        <button class="tab" role="tab" type="button" data-t="bom" aria-selected="false">BOM</button>
+        <button class="tab" role="tab" type="button" data-t="dim" aria-selected="false">치수·공차</button>
+        <button class="tab" role="tab" type="button" data-t="note" aria-selected="false">노트</button>
+        <button class="tab" role="tab" type="button" data-t="view" aria-selected="false">뷰·시트</button>
+      </div>
+      <div class="table-wrap" id="dataTable"></div>
+    </section>
+  </div>
+</main>
+
+<details class="panel settings" id="settings">
+  <summary>검토 규칙 설정 (JSON)</summary>
+  <div class="body">
+    <p>규칙별 사용 여부(enabled), 심각도(severity: ERROR / WARN / INFO), 파라미터를 바꿀 수 있습니다. 사내 타이틀블록 라벨이나 BOM 헤더명이 다르면 labels / bomHeaders 정규식을 고치세요. customRules에 항목을 추가하면 코드 수정 없이 새 규칙이 생깁니다. 설정은 이 브라우저에만 저장됩니다.</p>
+    <textarea id="cfgText" spellcheck="false" aria-label="규칙 설정 JSON"></textarea>
+    <div class="row">
+      <button class="btn primary" type="button" id="cfgApply">적용 후 재검토</button>
+      <button class="btn" type="button" id="cfgReset">기본값 복원</button>
+      <button class="btn" type="button" id="cfgSave">설정 JSON 저장</button>
+      <span class="msg" id="cfgMsg" role="status"></span>
+    </div>
+  </div>
+</details>
+
+<div class="toast" id="toast" hidden></div>
+<div class="drop-hint" id="dropHint" hidden>여기에 도면 파일을 놓으세요</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dxf-parser@1.1.2/dist/dxf-parser.js"></script>
+<script>
+"use strict";
+/* ============================================================
+ * 1. 설정 (기본 규칙 / 라벨 / BOM 헤더)
+ * ============================================================ */
+const DEFAULT_CONFIG = {
+  labels: {
+    drawingNo: "^(DWG\\.?\\s*NO|DRAWING\\s*NO|도면\\s*번호)",
+    title: "^(TITLE|DESCRIPTION|도\\s*명)$",
+    type: "^(TYPE|구\\s*분)$",
+    date: "^(DATE|일\\s*자)$",
+    prepared: "^(PREPARED|DRAWN|DESIGNED|작\\s*성|설\\s*계)$",
+    checked: "^(CHECKED|검\\s*토|검\\s*도)$",
+    approved: "^(APPROVED|승\\s*인)$",
+    itemCode: "^(ITEM\\s*CODE|품\\s*번)$",
+    scale: "^(SCALE|척\\s*도)$",
+    material: "^(MATERIAL|MAT'?L|재\\s*질)$",
+    finish: "^(FINISH|SURFACE\\s*TREATMENT|표면\\s*처리|후\\s*처리)$"
+  },
+  bomHeaders: {
+    no: "^(NO\\.?|ITEM|번호)$",
+    dwgNo: "(DWG|DRAWING|VENDOR|PART\\s*NO|도면\\s*번호)",
+    partName: "^(PART\\s*NAME|DESCRIPTION|품\\s*명)$",
+    size: "^(SIZE|SPEC|규\\s*격)$",
+    qty: "^(QTY|Q'TY|수\\s*량)$",
+    material: "^(MATERIAL|MAT'?L|재\\s*질)$",
+    remark: "^(REMARK|REMARKS|비\\s*고)$"
+  },
+  layout: { valueMaxDx: 120, borderMarginRatio: 0.03 },
+  rules: {
+    R01: { enabled: true, severity: "ERROR", params: { tolMm: 0.5 } },
+    R02: { enabled: true, severity: "WARN", params: {} },
+    R03: { enabled: true, severity: "ERROR", params: { scope: "document", skipReference: true } },
+    R04: { enabled: true, severity: "ERROR", params: { purchasedPattern: "(구매|PURCHASE|VENDOR|STD)", dashMeansNone: true } },
+    R05: { enabled: true, severity: "ERROR", params: {} },
+    R06: { enabled: true, severity: "ERROR", params: { patterns: ["ISO\\s*2768", "KS\\s*B\\s*ISO\\s*2768", "KS\\s*B\\s*0412", "GENERAL\\s+TOLERANCE", "일반\\s*공차", "보통\\s*공차"] } },
+    R07: { enabled: true, severity: "WARN", params: { patterns: ["UNSPECIFIED.*(CHAMFER|FILLET|EDGE)", "UNLESS\\s+OTHERWISE.*(CHAMFER|FILLET|C\\d|R\\d)", "BREAK\\s+(ALL\\s+)?(SHARP\\s+)?EDGES", "지시\\s*없는\\s*(모따기|모서리|라운드|필렛)"] } },
+    R08: { enabled: true, severity: "WARN", params: {
+      finishKeywords: { "ANODIZING": "ANODIZ|아노다이징|양극산화", "NI PLATING": "NI\\s*PLAT|ELECTROLESS\\s*NI|니켈\\s*도금", "ELECTROPOLISHING": "ELECTRO\\s*-?POLISH|전해\\s*연마", "PASSIVATION": "PASSIVAT|부동태", "BLACK OXIDE": "BLACK\\s*OXIDE|흑착색", "PAINTING": "PAINT|도장", "CR PLATING": "CHROM|크롬" },
+      materialKeywords: { "SUS304": "SUS\\s*304", "SUS316L": "SUS\\s*316", "A6061": "A?L?\\s*6061", "A5052": "A?L?\\s*5052", "SS400": "SS\\s*400", "S45C": "S45C", "PEEK": "PEEK", "POM": "POM", "PTFE": "PTFE|TEFLON" }
+    } }
+  },
+  customRules: [
+    { id: "C01", name: "도면번호 형식", enabled: true, severity: "WARN", target: "titleblock.drawingNo", check: "regex", pattern: "^[A-Z0-9]+(-[A-Z0-9]+)+$", message: "도면번호가 사내 형식(영문 대문자·숫자·하이픈)과 다릅니다.", action: "도면번호 체계를 확인하세요." },
+    { id: "C02", name: "버 제거 지시", enabled: true, severity: "INFO", target: "notes", check: "noteContains", pattern: "BURR|버\\s*제거|DEBURR", message: "버(Burr) 제거 지시 노트가 없습니다.", action: "가공품이면 'REMOVE ALL BURRS' 노트를 추가하세요." }
+  ]
+};
+
+const RULE_META = {
+  R01: { name: "품명·규격 불일치", en: "Part name vs size mismatch", cat: "BOM" },
+  R02: { name: "BOM 수량·인스턴스 불일치", en: "BOM qty vs instance", cat: "BOM" },
+  R03: { name: "공차 미표기", en: "Tolerance missing", cat: "치수" },
+  R04: { name: "재질·표면처리 누락", en: "Material/finish missing", cat: "타이틀블록/BOM" },
+  R05: { name: "서명·날짜 이상", en: "Signature/date issue", cat: "타이틀블록" },
+  R06: { name: "일반공차 미적용", en: "General tolerance note missing", cat: "노트" },
+  R07: { name: "모따기·필렛 기본값 미지시", en: "Default chamfer/fillet note missing", cat: "노트" },
+  R08: { name: "노트·BOM 모순", en: "Note vs BOM/title conflict", cat: "노트/BOM" }
+};
+const TB_FIELDS = [
+  ["drawingNo", "Drawing No"], ["title", "Title"], ["type", "Type"], ["date", "Date"],
+  ["prepared", "Prepared"], ["checked", "Checked"], ["approved", "Approved"],
+  ["itemCode", "Item Code"], ["scale", "Scale"], ["material", "Material"], ["finish", "Finish"]
+];
+const BOM_FIELDS = [["no", "No"], ["dwgNo", "Drawing/Vendor No"], ["partName", "Part Name"], ["size", "Size"], ["qty", "Qty"], ["material", "Material"], ["remark", "Remark"]];
+const SEV_KO = { ERROR: "오류", WARN: "경고", INFO: "정보" };
+const PT2MM = 25.4 / 72;
+
+/* ============================================================
+ * 2. 상태 · 유틸
+ * ============================================================ */
+const state = { config: null, docs: [], cur: 0, page: 0, filter: "ALL", selected: null, tab: "tb", isSample: false, elapsed: 0 };
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const rx = (s, f = "i") => { try { return new RegExp(s, f); } catch { return /$^/; } };
+const union = (bs) => { const v = bs.filter(Boolean); if (!v.length) return null; return [Math.min(...v.map((b) => b[0])), Math.min(...v.map((b) => b[1])), Math.max(...v.map((b) => b[2])), Math.max(...v.map((b) => b[3]))]; };
+const pad = (b, p) => b && [b[0] - p, b[1] - p, b[2] + p, b[3] + p];
+const inside = (p, b) => b && p.cx >= b[0] && p.cx <= b[2] && p.cy >= b[1] && p.cy <= b[3];
+const fmtMm = (b) => b ? `(${(b[0] * PT2MM).toFixed(0)}, ${(b[1] * PT2MM).toFixed(0)}) mm` : "";
+const blank = (v) => v == null || String(v).trim() === "";
+
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => (t.hidden = true), 3200); }
+
+function loadConfig() {
+  try { const s = localStorage.getItem("drc-config"); if (s) return JSON.parse(s); } catch {}
+  return structuredClone(DEFAULT_CONFIG);
+}
+function storeConfig(c) { try { localStorage.setItem("drc-config", JSON.stringify(c)); } catch {} }
+
+/* 파일 저장: 아티팩트 뷰어에서는 downloads 기능, 로컬 실행 시에는 일반 다운로드 */
+let downloadsNs = null;
+(async () => { try { if (window.claude && window.claude.use) downloadsNs = await window.claude.use("downloads"); } catch {} })();
+async function saveFile(filename, data) {
+  if (downloadsNs) {
+    try { await downloadsNs.save({ filename, data }); toast(`저장했습니다: ${filename}`); }
+    catch (e) { if (e && e.code === "declined") toast("저장을 취소했습니다."); else toast(`저장할 수 없습니다 (${e && e.code || "오류"}).`); }
+    return;
+  }
+  const blob = data instanceof Blob ? data : new Blob([data]);
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  toast(`저장했습니다: ${filename}`);
+}
+const stamp = () => { const d = new Date(), p = (n) => String(n).padStart(2, "0"); return `${String(d.getFullYear()).slice(2)}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; };
+
+/* ============================================================
+ * 3. 추출기 (Extractor) — PDF / DXF / JSON → 공통 텍스트 구조
+ * ============================================================ */
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+async function extractPdf(name, bytes) {
+  const pdf = await pdfjsLib.getDocument({ data: bytes.slice(0) }).promise;
+  const pages = [];
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const vp = page.getViewport({ scale: 1 });
+    const tc = await page.getTextContent();
+    const items = [];
+    for (const it of tc.items) {
+      if (!it.str || !it.str.trim()) continue;
+      const tx = pdfjsLib.Util.transform(vp.transform, it.transform);
+      const fh = Math.hypot(tx[2], tx[3]) || 8;
+      const rot = Math.abs(tx[1]) > Math.abs(tx[0]);
+      const w = it.width || fh * 0.55 * it.str.length;
+      const b = rot ? [tx[4] - fh, tx[5] - w, tx[4] + fh * 0.2, tx[5]] : [tx[4], tx[5] - fh, tx[4] + w, tx[5] + fh * 0.2];
+      items.push({ str: it.str, b, h: fh, rot, base: rot ? tx[4] : tx[5] });
+    }
+    pages.push({ w: vp.width, h: vp.height, phrases: mergePhrases(items) });
+  }
+  return { name, kind: "pdf", bytes, pdf, pages };
+}
+
+/* 같은 줄의 인접 텍스트 조각을 하나의 문구(phrase)로 병합 */
+function mergePhrases(items) {
+  const out = [];
+  const horiz = items.filter((i) => !i.rot).sort((a, b) => a.base - b.base || a.b[0] - b.b[0]);
+  let line = [];
+  const flush = () => {
+    line.sort((a, b) => a.b[0] - b.b[0]);
+    let cur = null;
+    for (const it of line) {
+      if (cur && it.b[0] - cur.b[2] < 0.6 * Math.max(cur.h, it.h) && it.b[0] - cur.b[2] > -0.5 * it.h) {
+        cur.str += (it.b[0] - cur.b[2] > 0.15 * it.h ? " " : "") + it.str;
+        cur.b = union([cur.b, it.b]); cur.h = Math.max(cur.h, it.h);
+      } else { if (cur) out.push(cur); cur = { str: it.str, b: it.b.slice(), h: it.h, rot: false }; }
+    }
+    if (cur) out.push(cur);
+    line = [];
+  };
+  for (const it of horiz) {
+    if (line.length && Math.abs(it.base - line[line.length - 1].base) > 0.35 * it.h) flush();
+    line.push(it);
+  }
+  flush();
+  for (const it of items.filter((i) => i.rot)) out.push({ str: it.str, b: it.b, h: it.h, rot: true });
+  for (const p of out) { p.str = p.str.replace(/\s+/g, " ").trim(); p.cx = (p.b[0] + p.b[2]) / 2; p.cy = (p.b[1] + p.b[3]) / 2; }
+  return out.filter((p) => p.str);
+}
+
+function stripMtext(s) {
+  return String(s || "").replace(/\\P/g, " ").replace(/\{\\[^;{}]*;/g, "").replace(/\\[A-Za-z][^;\\]*;/g, "").replace(/[{}]/g, "").replace(/%%[cC]/g, "Ø").replace(/%%[pP]/g, "±").replace(/%%[dD]/g, "°").trim();
+}
+
+function extractDxf(name, text) {
+  const Parser = window.DxfParser && (window.DxfParser.default || window.DxfParser);
+  if (!Parser) throw new Error("DXF 해석 라이브러리를 불러오지 못했습니다.");
+  const dxf = new Parser().parseSync(text);
+  const ents = dxf.entities || [];
+  const raw = [], geo = [];
+  for (const e of ents) {
+    if (e.type === "TEXT" && e.startPoint) raw.push({ str: stripMtext(e.text), x: e.startPoint.x, y: e.startPoint.y, h: e.textHeight || 2.5, rot: Math.abs(((e.rotation || 0) % 180)) > 45 });
+    else if (e.type === "MTEXT" && e.position) stripMtext(e.text).split(/\s{2,}/).forEach((s, k) => raw.push({ str: s, x: e.position.x, y: e.position.y - k * (e.height || 2.5) * 1.6, h: e.height || 2.5, rot: false, top: true }));
+    else if (e.type === "DIMENSION" && e.middleOfText) {
+      let s = stripMtext(e.text || "");
+      const t = (e.dimensionType || 0) & 7;
+      let mv = e.actualMeasurement;
+      const p1 = e.linearOrAngularPoint1, p2 = e.linearOrAngularPoint2;
+      if (mv == null && p1 && p2 && t <= 1) { const a = ((e.angle || 0) * Math.PI) / 180, dx = p2.x - p1.x, dy = p2.y - p1.y; mv = t === 1 ? Math.hypot(dx, dy) : Math.abs(dx * Math.cos(a) + dy * Math.sin(a)); }
+      if (mv == null && e.diameterOrRadiusPoint && e.anchorPoint && (t === 3 || t === 4)) { const r = Math.hypot(e.diameterOrRadiusPoint.x - e.anchorPoint.x, e.diameterOrRadiusPoint.y - e.anchorPoint.y); mv = r; }
+      const meas = mv != null ? (+mv.toFixed(3)).toString() : "";
+      const pre = t === 3 ? "Ø" : t === 4 ? "R" : "";
+      if (!s || s.includes("<>")) s = s ? s.replace("<>", pre + meas) : pre + meas + (t === 2 || t === 5 ? "°" : "");
+      raw.push({ str: s, x: e.middleOfText.x, y: e.middleOfText.y, h: 2.5, rot: false, mid: true, dim: true });
+    } else if (["LINE", "LWPOLYLINE", "POLYLINE", "CIRCLE", "ARC"].includes(e.type)) geo.push(e);
+  }
+  const xs = [], ys = [];
+  for (const r of raw) { xs.push(r.x); ys.push(r.y); }
+  for (const g of geo) {
+    (g.vertices || []).forEach((v) => { xs.push(v.x); ys.push(v.y); });
+    if (g.center) { xs.push(g.center.x - g.radius, g.center.x + g.radius); ys.push(g.center.y - g.radius, g.center.y + g.radius); }
+  }
+  if (!xs.length) throw new Error("DXF에 읽을 수 있는 엔티티가 없습니다.");
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const k = 72 / 25.4, m = 10;
+  const tx = (x) => (x - minX) * k + m, ty = (y) => (maxY - y) * k + m;
+  const items = raw.filter((r) => r.str).map((r) => {
+    const h = r.h * k, w = r.str.length * h * 0.6, x = tx(r.x), y = ty(r.y);
+    const b = r.mid ? [x - w / 2, y - h / 2, x + w / 2, y + h / 2] : r.top ? [x, y, x + w, y + h] : r.rot ? [x - h, y - w, x, y] : [x, y - h, x + w, y];
+    return { str: r.str, b, h, rot: r.rot, base: r.rot ? b[2] : b[3], dim: r.dim };
+  });
+  const phrases = mergePhrases(items.filter((i) => !i.dim)).concat(items.filter((i) => i.dim).map((i) => ({ ...i, cx: (i.b[0] + i.b[2]) / 2, cy: (i.b[1] + i.b[3]) / 2 })));
+  return { name, kind: "dxf", geo, tx, ty, k, pages: [{ w: (maxX - minX) * k + 2 * m, h: (maxY - minY) * k + 2 * m, phrases }] };
+}
+
+/* JSON: 파이썬 추출기(swformat/COM) 결과 DrawingData를 그대로 검사 */
+function extractJson(name, text) {
+  const j = JSON.parse(text);
+  const doc = { name, kind: "json", pages: [{ w: 0, h: 0, phrases: [] }], fromJson: true };
+  const tb = j.titleblock || j.titleBlock || {};
+  doc.titleblock = {};
+  for (const [f] of TB_FIELDS) {
+    const v = tb[f];
+    doc.titleblock[f] = { value: typeof v === "object" && v ? v.value ?? v.name ?? "" : v ?? "", date: (typeof v === "object" && v && v.date) || tb[f + "Date"] || "", page: 0, b: null, src: j.source || "json" };
+  }
+  doc.bom = (j.bom || []).map((r) => ({ ...Object.fromEntries(BOM_FIELDS.map(([f]) => [f, r[f] != null ? String(r[f]) : ""])), page: 0, b: null, instances: r.instances }));
+  doc.dims = (j.dims || j.dimensions || []).map((d) => ({ ...parseDim(d.text || d.display || ""), page: d.sheet ? d.sheet - 1 : 0, b: d.bbox || null, view: d.view || "", tolOverride: d.tolerance }));
+  doc.notes = (j.notes || []).map((n) => ({ kind: n.kind || "General", text: n.text || String(n), page: 0, b: n.bbox || null }));
+  doc.views = (j.views || []).map((v) => ({ name: v.name || "", scale: v.scale || "", page: v.sheet ? v.sheet - 1 : 0, b: null }));
+  doc.sheets = (j.sheets || [{ name: "Sheet1" }]).map((s, i) => ({ page: i, name: s.name || `Sheet${i + 1}`, size: s.size || "", scale: s.scale || "" }));
+  doc.balloons = j.balloons || [];
+  doc.regions = [{}];
+  return doc;
+}
+
+/* ============================================================
+ * 4. 레이아웃 분석 — 타이틀블록 / BOM / 노트 / 치수 / 뷰
+ * ============================================================ */
+const DIM_RE = /^(\()?((?:\d+\s*[xX×]|\d+-)\s*)?(Ø|⌀|φ|SR|R|C|M|□|t)?\s*(\d+(?:\.\d+)?)(?:\s*[xX×]\s*[\d.]+)?\s*(°)?\s*(.*?)(\))?$/;
+function parseDim(text) {
+  const t = text.trim();
+  const m = t.match(DIM_RE);
+  if (!m) return { text: t, ok: false };
+  const rest = (m[6] || "").trim();
+  let tolType = "none", tol = "";
+  const sym = rest.match(/±\s*\d+(\.\d+)?/);
+  const dev = rest.match(/[+]\s*\d+(\.\d+)?\s*\/?\s*[-−]\s*\d+(\.\d+)?|[-−]\s*\d+(\.\d+)?\s*\/?\s*[+]\s*\d+(\.\d+)?/);
+  const fit = rest.match(/\b[A-HJ-NP-Za-hj-np-z]{1,2}\d{1,2}\b/);
+  if (sym) { tolType = "symmetric"; tol = sym[0].replace(/\s/g, ""); }
+  else if (dev) { tolType = "deviation"; tol = dev[0].replace(/\s/g, ""); }
+  else if (fit && !/^(THRU|DP|EQS|TYP)$/i.test(fit[0])) { tolType = "fit"; tol = fit[0]; }
+  if (m[1] && m[7]) tolType = "reference";
+  if (m[3] === "□") tolType = "basic";
+  const annot = rest.replace(sym?.[0] || "", "").replace(dev?.[0] || "", "").trim();
+  if (annot && !/^(THRU|DP|EQS|TYP|DEEP|MAX|MIN|TAP|[A-Za-z]{1,2}\d{1,2}|↧.*|\d.*)(\s.*)?$/i.test(annot)) return { text: t, ok: false };
+  return { text: t, ok: true, prefix: m[3] || "", nominal: +m[4], angle: !!m[5], tolType, tol, count: m[2] ? parseInt(m[2]) : 1 };
+}
+
+function sameRow(a, b) { return Math.abs(a.cy - b.cy) < Math.max(a.h, b.h) * 0.8; }
+function linesOf(ps) {
+  const s = ps.slice().sort((a, b) => a.cy - b.cy || a.b[0] - b.b[0]);
+  const out = [];
+  for (const p of s) { const l = out[out.length - 1]; if (l && Math.abs(l.cy - p.cy) < p.h * 0.6) { l.items.push(p); } else out.push({ cy: p.cy, items: [p] }); }
+  out.forEach((l) => l.items.sort((a, b) => a.b[0] - b.b[0]));
+  return out;
+}
+
+function findBom(pg, cfg) {
+  const H = Object.fromEntries(Object.entries(cfg.bomHeaders).map(([k, v]) => [k, rx(v)]));
+  for (const hdr of pg.phrases.filter((p) => H.partName.test(p.str))) {
+    const row = pg.phrases.filter((p) => sameRow(p, hdr));
+    const cols = [];
+    for (const p of row.sort((a, b) => a.b[0] - b.b[0])) {
+      const f = ["no", "partName", "size", "qty", "material", "remark", "dwgNo"].find((k) => H[k].test(p.str) && !cols.some((c) => c.f === k));
+      if (f) cols.push({ f, p });
+    }
+    if (!cols.some((c) => c.f === "qty") || cols.length < 3) continue;
+    cols.sort((a, b) => a.p.b[0] - b.p.b[0]);
+    cols.forEach((c, i) => { c.l = i ? (cols[i - 1].p.b[2] + c.p.b[0]) / 2 : -1e9; c.r = i < cols.length - 1 ? (c.p.b[2] + cols[i + 1].p.b[0]) / 2 : 1e9; });
+    const x0 = cols[0].p.b[0] - 6, x1 = cols[cols.length - 1].p.b[2] + 80;
+    const hb = union(cols.map((c) => c.p.b));
+    const cand = pg.phrases.filter((p) => !cols.some((c) => c.p === p) && p.b[0] >= x0 && p.b[2] <= x1 + 200 && p.cx <= x1);
+    const L = linesOf(cand);
+    const parseRow = (l) => {
+      const r = { b: union(l.items.map((i) => i.b)) };
+      for (const it of l.items) { const a = it.b[0] + Math.min(4, (it.b[2] - it.b[0]) / 2); const c = cols.find((c) => a >= c.l && a < c.r); if (c) r[c.f] = (r[c.f] ? r[c.f] + " " : "") + it.str; }
+      return r;
+    };
+    const walk = (lines) => {
+      const rows = []; let prev = hdr.cy;
+      for (const l of lines) {
+        if (Math.abs(l.cy - prev) > hdr.h * 3.2) break;
+        const r = parseRow(l);
+        if (!/^\d+$/.test((r.no || "").trim())) break;
+        rows.push(r); prev = l.cy;
+      }
+      return rows;
+    };
+    const below = walk(L.filter((l) => l.cy > hdr.cy));
+    const above = walk(L.filter((l) => l.cy < hdr.cy).reverse()).reverse();
+    const rows = below.length >= above.length ? below : above;
+    if (!rows.length) continue;
+    return { rows: rows.map((r) => Object.assign(Object.fromEntries(BOM_FIELDS.map(([f]) => [f, (r[f] || "").trim()])), { b: r.b })), region: pad(union([hb, ...rows.map((r) => r.b)]), 3), headerPhrases: cols.map((c) => c.p) };
+  }
+  return null;
+}
+
+const DATE_RE = /(\d{4}|\d{2})[-./](\d{1,2})[-./](\d{1,2})/;
+function parseDate(s) {
+  const m = String(s || "").match(DATE_RE); if (!m) return null;
+  let y = +m[1]; if (y < 100) y += 2000;
+  const d = new Date(y, +m[2] - 1, +m[3]);
+  return isNaN(d) || d.getMonth() !== +m[2] - 1 ? null : d;
+}
+
+function findTitleblock(doc, cfg, bomInfo) {
+  const L = Object.fromEntries(Object.entries(cfg.labels).map(([k, v]) => [k, rx(v)]));
+  const maxDx = cfg.layout.valueMaxDx;
+  for (let pi = 0; pi < doc.pages.length; pi++) {
+    const pg = doc.pages[pi];
+    const exclude = new Set(bomInfo[pi] ? bomInfo[pi].headerPhrases : []);
+    const pool = pg.phrases.filter((p) => !exclude.has(p) && !(bomInfo[pi] && inside(p, bomInfo[pi].region)));
+    const labelOf = new Map();
+    const found = {};
+    for (const p of pool) {
+      const s = p.str.replace(/[:：]\s*$/, "").trim();
+      const head = p.str.split(/[:：]/)[0].trim();
+      for (const [f, r] of Object.entries(L)) {
+        if (r.test(s) || (p.str.includes(":") && r.test(head))) {
+          const score = p.cy + p.cx * 0.5;
+          if (!found[f] || score > found[f].score) found[f] = { p, score, inline: p.str.includes(":") ? p.str.split(/[:：]/).slice(1).join(":").trim() : "" };
+          labelOf.set(p, f);
+        }
+      }
+    }
+    if (Object.keys(found).length < 3) continue;
+    const labels = [...labelOf.keys()];
+    const used = new Set();
+    const valueNear = (lab, opts = {}) => {
+      const cands = pool.filter((p) => !labelOf.has(p) && !used.has(p) && p !== lab && (!opts.test || opts.test(p.str)));
+      const nextRight = Math.min(...labels.filter((l) => l !== lab && sameRow(l, lab) && l.b[0] > lab.b[2]).map((l) => l.b[0]), Infinity);
+      const right = cands.filter((p) => sameRow(p, lab) && p.b[0] >= lab.b[2] - 2 && p.b[0] - lab.b[2] < maxDx && p.b[0] < nextRight).sort((a, b) => a.b[0] - b.b[0]);
+      if (right.length && !opts.belowOnly) return right[0];
+      const nextBelow = Math.min(...labels.filter((l) => l !== lab && l.cy > lab.cy + lab.h * 0.5 && l.b[0] < lab.b[2] + 5 && l.b[2] > lab.b[0] - 5).map((l) => l.b[1]), Infinity);
+      const below = cands.filter((p) => p.b[1] >= lab.b[3] - 1 && p.b[1] - lab.b[3] < lab.h * 2.6 && p.b[1] < nextBelow && p.b[0] >= lab.b[0] - 6 && p.b[0] < lab.b[2] + 30).sort((a, b) => a.b[1] - b.b[1]);
+      return below[0] || null;
+    };
+    const tb = {};
+    const sig = ["prepared", "checked", "approved"];
+    for (const [f] of TB_FIELDS) {
+      const fd = found[f];
+      if (!fd) { tb[f] = { value: "", date: "", page: pi, b: null, missingLabel: true, src: doc.kind }; continue; }
+      let v = fd.inline ? { str: fd.inline, b: fd.p.b } : null;
+      if (!v && f === "date") v = valueNear(fd.p, { test: (s) => DATE_RE.test(s) });
+      if (!v && f !== "date") v = valueNear(fd.p, sig.includes(f) ? { test: (s) => !DATE_RE.test(s) } : {});
+      if (v && v.str !== fd.inline) used.add(v);
+      const rec = { value: v ? v.str : "", date: "", page: pi, b: pad(union([fd.p.b, v && v.b]), 2), labelB: fd.p.b, src: doc.kind };
+      if (sig.includes(f)) {
+        const anchor = v || fd.p;
+        const d = pool.filter((p) => !used.has(p) && DATE_RE.test(p.str) && sameRow(p, anchor) && p.b[0] >= anchor.b[2] - 2 && p.b[0] - anchor.b[2] < maxDx).sort((a, b) => a.b[0] - b.b[0])[0];
+        if (d) { rec.date = d.str; used.add(d); rec.b = pad(union([rec.b, d.b]), 2); }
+      }
+      tb[f] = rec;
+    }
+    let region = pad(union(Object.values(tb).map((r) => r.b)), 6);
+    // 타이틀블록은 보통 도면 우하단 모서리: 프레임 끝까지 영역 확장
+    const mx = Math.min(pg.w, pg.h) * cfg.layout.borderMarginRatio * 0.5;
+    if (region && region[0] > pg.w * 0.4 && region[1] > pg.h * 0.5) region = [region[0], region[1], Math.max(region[2], pg.w - mx), Math.max(region[3], pg.h - mx)];
+    return { tb, page: pi, region };
+  }
+  return { tb: Object.fromEntries(TB_FIELDS.map(([f]) => [f, { value: "", date: "", page: 0, b: null, missingLabel: true, src: doc.kind }])), page: 0, region: null };
+}
+
+const NOTE_HEAD = /^(GENERAL\s+NOTES?|NOTES?|주\s*기|일반\s*주기|주\s*석)\s*[:：]?$/i;
+function findNotes(pg, pi, excludeRegions) {
+  const notes = []; let region = null;
+  const pool = pg.phrases.filter((p) => !excludeRegions.some((r) => inside(p, r)));
+  for (const head of pool.filter((p) => NOTE_HEAD.test(p.str))) {
+    const below = linesOf(pool.filter((p) => p !== head && p.cy > head.cy && p.b[0] >= head.b[0] - 12 && p.b[0] < head.b[0] + 260));
+    let prev = head.cy; const items = [];
+    for (const l of below) {
+      if (l.cy - prev > head.h * 2.8) break;
+      const text = l.items.map((i) => i.str).join(" ");
+      const b = union(l.items.map((i) => i.b));
+      if (/^\d+\s*[.)]/.test(text) || !items.length) items.push({ text, b }); else { const last = items[items.length - 1]; last.text += " " + text; last.b = union([last.b, b]); }
+      prev = l.cy;
+    }
+    const kind = /GENERAL|일반/i.test(head.str) || true ? "General" : "General";
+    items.forEach((it) => notes.push({ kind, text: it.text, page: pi, b: it.b, head: head.str }));
+    region = union([region, head.b, ...items.map((i) => i.b)]);
+  }
+  return { notes, region: region && pad(region, 4) };
+}
+
+const VIEW_RE = /^(?:(SECTION|DETAIL|VIEW|단면|상세)\s+([A-Z]{1,2}(?:\s*-\s*[A-Z]{1,2})?)\b|(FRONT|TOP|SIDE|RIGHT|LEFT|BOTTOM|REAR|BACK|ISOMETRIC|ISO|정면|평면|측면|배면)\s*(VIEW|도)?\b)/i;
+function analyze(doc, cfg) {
+  if (doc.fromJson) return doc;
+  const bomInfo = doc.pages.map((pg) => findBom(pg, cfg));
+  doc.bom = []; bomInfo.forEach((bi, pi) => bi && bi.rows.forEach((r) => doc.bom.push({ ...r, page: pi, src: doc.kind })));
+  const tbi = findTitleblock(doc, cfg, bomInfo);
+  doc.titleblock = tbi.tb;
+  doc.regions = doc.pages.map((_, pi) => ({ bom: bomInfo[pi] && bomInfo[pi].region, tb: pi === tbi.page ? tbi.region : null }));
+  doc.notes = []; doc.dims = []; doc.views = []; doc.balloons = []; doc.sheets = [];
+  const bomNos = new Set(doc.bom.map((r) => r.no));
+  doc.pages.forEach((pg, pi) => {
+    const R = doc.regions[pi];
+    const n = findNotes(pg, pi, [R.bom, R.tb].filter(Boolean));
+    doc.notes.push(...n.notes); R.note = n.region;
+    const mx = doc.kind === "dxf" ? 0 : Math.min(pg.w, pg.h) * cfg.layout.borderMarginRatio;
+    const free = pg.phrases.filter((p) => ![R.bom, R.tb, R.note].some((r) => inside(p, r)) && p.cx > mx && p.cx < pg.w - mx && p.cy > mx && p.cy < pg.h - mx);
+    const tolPhr = new Set();
+    // 뷰 라벨
+    for (const p of free) {
+      const m = p.str.match(VIEW_RE);
+      if (m && (m[1] || m[4] || /SCALE/i.test(p.str))) { const sc = p.str.match(/SCALE\s*([\d.]+\s*:\s*[\d.]+)/i); doc.views.push({ name: m[1] ? `${m[1].toUpperCase()} ${m[2].replace(/\s/g, "")}` : `${m[3].toUpperCase()} VIEW`, scale: sc ? sc[1].replace(/\s/g, "") : "", page: pi, b: p.b }); tolPhr.add(p); }
+    }
+    // 적층 공차(+0.1 / -0)를 치수에 결합
+    const isTol = (s) => /^([+\-−±]\s*\d+(\.\d+)?|0)$/.test(s.trim());
+    for (const p of free) {
+      if (tolPhr.has(p) || isTol(p.str)) continue;
+      if (bomNos.has(p.str.trim()) && /^\d{1,3}$/.test(p.str.trim())) { doc.balloons.push({ no: p.str.trim(), page: pi, b: p.b }); continue; }
+      let d = parseDim(p.str);
+      if (!d.ok) continue;
+      const stack = free.filter((q) => q !== p && isTol(q.str) && q.b[0] >= p.b[2] - 2 && q.b[0] - p.b[2] < p.h * 2.5 && Math.abs(q.cy - p.cy) < p.h * 1.3);
+      let b = p.b;
+      if (stack.length && d.tolType === "none") {
+        stack.sort((a, c) => a.cy - c.cy); stack.forEach((q) => tolPhr.add(q));
+        const tolStr = stack.map((q) => q.str.replace(/\s/g, "")).join("/");
+        d = { ...d, text: `${p.str} ${tolStr}`, tolType: stack.some((q) => q.str.includes("±")) ? "symmetric" : "deviation", tol: tolStr };
+        b = union([p.b, ...stack.map((q) => q.b)]);
+      }
+      doc.dims.push({ ...d, page: pi, b, src: doc.kind });
+      tolPhr.add(p);
+    }
+    // 특기 노트(Specific Note): 치수·뷰·풍선이 아닌 도면 영역 문구
+    for (const p of free) {
+      if (tolPhr.has(p) || isTol(p.str) || doc.balloons.some((x) => x.b === p.b)) continue;
+      if (/[A-Za-z가-힣]{2,}/.test(p.str) && p.str.length > 3) doc.notes.push({ kind: "Specific", text: p.str, page: pi, b: p.b });
+    }
+    doc.views.forEach((v) => { if (v.page === pi) v.b = v.b; });
+    const mmW = pg.w * PT2MM, mmH = pg.h * PT2MM;
+    const sizes = { A0: [1189, 841], A1: [841, 594], A2: [594, 420], A3: [420, 297], A4: [297, 210] };
+    const size = Object.entries(sizes).find(([, [a, b]]) => Math.abs(Math.max(mmW, mmH) - a) < 8 && Math.abs(Math.min(mmW, mmH) - b) < 8);
+    doc.sheets.push({ page: pi, name: `Sheet${pi + 1}`, size: size ? size[0] : `${mmW.toFixed(0)}×${mmH.toFixed(0)} mm`, scale: pi === tbi.page ? doc.titleblock.scale.value : "" });
+  });
+  // 치수가 속한 뷰: 같은 시트의 가장 가까운 뷰 라벨(라벨 위쪽 영역 우선)
+  for (const d of doc.dims) {
+    const vs = doc.views.filter((v) => v.page === d.page);
+    if (!vs.length) continue;
+    const cx = (d.b[0] + d.b[2]) / 2, cy = (d.b[1] + d.b[3]) / 2;
+    const best = vs.map((v) => ({ v, dist: Math.hypot((v.b[0] + v.b[2]) / 2 - cx, (v.b[1] - cy) * (v.b[1] > cy ? 0.6 : 1.6)) })).sort((a, b) => a.dist - b.dist)[0];
+    d.view = best.v.name;
+  }
+  return doc;
+}
+
+/* ============================================================
+ * 5. 검사기 (Checker) — 규칙 레지스트리
+ *    새 규칙: RULES.Rxx = (doc, params, ctx) => [{...issue}] 를 추가하고 설정에 Rxx 항목만 넣으면 됨
+ * ============================================================ */
+const allText = (doc) => doc.notes.map((n) => n.text).join("\n") + "\n" + doc.pages.flatMap((p) => p.phrases.map((x) => x.str)).join("\n");
+const firstNum = (s) => { const m = String(s || "").replace(/,/g, "").match(/(\d+(?:\.\d+)?)/); return m ? +m[1] : null; };
+const loc = (page, area, b) => ({ page, area, b });
+
+const RULES = {
+  R01(doc, p) {
+    const out = [];
+    for (const r of doc.bom) {
+      const m = r.partName.match(/[A-Za-z가-힣)\]]\s*(\d+(?:\.\d+)?)\s*(A|MM)?\s*$/i);
+      if (!m || blank(r.size)) continue;
+      const n = +m[1], s = firstNum(r.size);
+      if (s == null) continue;
+      if (/A$/i.test(m[2] || "")) continue; // 배관 호칭(A)은 외경과 다를 수 있어 제외
+      if (Math.abs(n - s) > p.tolMm) out.push({ loc: loc(r.page, `BOM #${r.no}`, r.b), detail: `품명 "${r.partName}"의 치수 ${n}과 Size "${r.size}"의 ${s}가 다릅니다 (차이 ${Math.abs(n - s).toFixed(2)} mm).`, action: "품명 또는 Size 중 맞는 값으로 통일하세요.", evidence: `PartName=${r.partName} / Size=${r.size}` });
+    }
+    return out;
+  },
+  R02(doc) {
+    const out = [];
+    for (const r of doc.bom) {
+      const q = firstNum(r.qty);
+      if (r.instances != null) {
+        if (q !== +r.instances) out.push({ loc: loc(r.page, `BOM #${r.no}`, r.b), detail: `BOM 수량 ${r.qty}, 모델 인스턴스 ${r.instances}개로 다릅니다.`, action: "BOM 수량 또는 조립 구성품 수를 확인하세요.", evidence: `Qty=${r.qty} / Instances=${r.instances}` });
+        continue;
+      }
+      const balloons = doc.balloons.filter((b) => b.no === r.no);
+      if (!balloons.length && !doc.fromJson) out.push({ loc: loc(r.page, `BOM #${r.no}`, r.b), detail: `BOM ${r.no}번(${r.partName || "품명 없음"})의 풍선(Balloon)이 도면에 없습니다. 실제 배치 수량을 확인할 수 없습니다.`, action: "해당 부품에 풍선을 추가하거나 BOM에서 삭제하세요.", evidence: `Qty=${r.qty} / Balloon=0`, sevOverride: null });
+    }
+    if (doc.bom.length && !doc.bom.some((r) => r.instances != null)) out.push({ loc: loc(0, "BOM", null), detail: "PDF·DXF에는 모델 인스턴스 수가 없어 풍선 유무로만 검사했습니다. 정확한 수량 비교는 COM 추출 JSON(instances)이 필요합니다.", action: "SolidWorks COM 추출 결과를 JSON으로 불러오세요.", evidence: "instances 없음", sevOverride: "INFO" });
+    return out;
+  },
+  R03(doc, p, ctx) {
+    const out = [];
+    const hasGen = (page) => p.scope === "sheet" ? ctx.genTolPages.has(page) : ctx.genTolPages.size > 0;
+    for (const d of doc.dims) {
+      const tt = d.tolOverride ? "explicit" : d.tolType;
+      if (tt !== "none") continue;
+      if (p.skipReference && (tt === "reference" || tt === "basic")) continue;
+      if (hasGen(d.page)) continue;
+      out.push({ loc: loc(d.page, d.view || "도면 영역", d.b), detail: `치수 "${d.text}"에 개별 공차가 없고 적용할 일반공차 노트도 없습니다.`, action: "개별 공차를 기입하거나 일반공차(예: KS B ISO 2768-m) 노트를 추가하세요.", evidence: d.text });
+    }
+    return out;
+  },
+  R04(doc, p) {
+    const out = [];
+    const tb = doc.titleblock;
+    const empty = (v) => blank(v) || (!p.dashMeansNone && /^[-–—]$/.test(v.trim()));
+    for (const f of ["material", "finish"]) {
+      if (empty(tb[f].value)) out.push({ loc: loc(tb[f].page, `타이틀블록 ${f === "material" ? "Material" : "Finish"}`, tb[f].b), detail: tb[f].missingLabel ? `타이틀블록에서 ${f === "material" ? "재질" : "표면처리"} 칸을 찾지 못했습니다.` : `타이틀블록 ${f === "material" ? "재질" : "표면처리"} 값이 비어 있습니다.`, action: f === "material" ? "재질(예: A6061-T6, SUS304)을 기입하세요." : "표면처리를 기입하세요. 처리가 없으면 '-' 또는 'NONE'으로 명시하세요.", evidence: `${f}="${tb[f].value}"` });
+    }
+    const pur = rx(p.purchasedPattern);
+    for (const r of doc.bom) {
+      if (blank(r.material) && !pur.test(r.remark) && !pur.test(r.dwgNo)) out.push({ loc: loc(r.page, `BOM #${r.no}`, r.b), detail: `BOM ${r.no}번(${r.partName})의 재질이 비어 있습니다.`, action: "재질을 기입하거나 구매품이면 Remark에 구매품으로 표기하세요.", evidence: `Material="" / Remark="${r.remark}"`, sevOverride: "WARN" });
+    }
+    return out;
+  },
+  R05(doc) {
+    const out = [];
+    const tb = doc.titleblock;
+    const names = { prepared: "작성(Prepared)", checked: "검토(Checked)", approved: "승인(Approved)" };
+    const dates = {};
+    for (const f of ["prepared", "checked", "approved"]) {
+      const r = tb[f];
+      if (blank(r.value)) out.push({ loc: loc(r.page, `타이틀블록 ${names[f]}`, r.b), detail: `${names[f]} 서명란이 비어 있습니다.`, action: "결재자를 기입하세요.", evidence: `${f}=""` });
+      if (blank(r.date)) { if (!blank(r.value)) out.push({ loc: loc(r.page, `타이틀블록 ${names[f]}`, r.b), detail: `${names[f]} 날짜가 없습니다.`, action: "결재 일자를 기입하세요.", evidence: `${f}Date=""`, sevOverride: "WARN" }); continue; }
+      const d = parseDate(r.date);
+      if (!d) { out.push({ loc: loc(r.page, `타이틀블록 ${names[f]}`, r.b), detail: `${names[f]} 날짜 "${r.date}"를 날짜로 읽을 수 없습니다.`, action: "YYYY-MM-DD 형식으로 기입하세요.", evidence: r.date, sevOverride: "WARN" }); continue; }
+      dates[f] = d;
+      if (d > new Date()) out.push({ loc: loc(r.page, `타이틀블록 ${names[f]}`, r.b), detail: `${names[f]} 날짜 ${r.date}가 미래 날짜입니다.`, action: "결재 일자를 확인하세요.", evidence: r.date, sevOverride: "WARN" });
+    }
+    const order = [["prepared", "checked"], ["checked", "approved"], ["prepared", "approved"]];
+    for (const [a, b] of order) if (dates[a] && dates[b] && dates[b] < dates[a]) { out.push({ loc: loc(tb[b].page, `타이틀블록 ${names[b]}`, tb[b].b), detail: `${names[b]} 날짜(${tb[b].date})가 ${names[a]} 날짜(${tb[a].date})보다 앞섭니다.`, action: "결재 순서(작성 → 검토 → 승인)에 맞게 날짜를 고치세요.", evidence: `${a}=${tb[a].date} / ${b}=${tb[b].date}` }); break; }
+    const dd = parseDate(tb.date.value);
+    if (dd && dates.prepared && dd < dates.prepared) out.push({ loc: loc(tb.date.page, "타이틀블록 Date", tb.date.b), detail: `도면 Date(${tb.date.value})가 작성일(${tb.prepared.date})보다 앞섭니다.`, action: "도면 Date와 결재 일자를 맞추세요.", evidence: `Date=${tb.date.value}`, sevOverride: "WARN" });
+    if (blank(tb.date.value)) out.push({ loc: loc(tb.date.page, "타이틀블록 Date", tb.date.b), detail: "도면 Date가 비어 있습니다.", action: "도면 일자를 기입하세요.", evidence: 'Date=""', sevOverride: "WARN" });
+    return out;
+  },
+  R06(doc, p, ctx) {
+    if (ctx.genTolPages.size) return [];
+    return [{ loc: loc(0, "노트", doc.regions[0] && doc.regions[0].note), detail: `노트에서 일반공차 지시(${p.patterns.slice(0, 2).join(", ").replace(/\\s\*/g, " ").replace(/\\/g, "")} 등)를 찾지 못했습니다.`, action: "General Note에 'GENERAL TOLERANCE: KS B ISO 2768-m'을 추가하세요.", evidence: `노트 ${doc.notes.filter((n) => n.kind === "General").length}건 검사` }];
+  },
+  R07(doc, p) {
+    const cr = doc.dims.filter((d) => d.prefix === "C" || d.prefix === "R");
+    const txt = doc.notes.map((n) => n.text).join("\n");
+    if (p.patterns.some((s) => rx(s).test(txt))) return [];
+    return [{ loc: loc(0, "노트", doc.regions[0] && doc.regions[0].note), detail: `지시 없는 모따기·필렛(모서리) 기본값 노트가 없습니다.${cr.length ? ` 도면에 C/R 치수 ${cr.length}개(${cr.slice(0, 3).map((d) => d.text).join(", ")})가 있어 나머지 모서리 처리가 불명확합니다.` : ""}`, action: "예: 'UNSPECIFIED CHAMFER C0.5, FILLET R0.5' 노트를 추가하세요.", evidence: `C/R 치수 ${cr.length}개` }];
+  },
+  R08(doc, p) {
+    const out = [];
+    const general = doc.notes.filter((n) => n.kind === "General");
+    const kw = (map, s) => Object.entries(map).filter(([, r]) => rx(r).test(s)).map(([k]) => k);
+    const tb = doc.titleblock;
+    for (const n of general) {
+      const nf = kw(p.finishKeywords, n.text), tf = kw(p.finishKeywords, tb.finish.value);
+      if (nf.length && tf.length && !nf.some((k) => tf.includes(k))) out.push({ loc: loc(n.page, "노트", n.b), detail: `노트의 표면처리(${nf.join(", ")})와 타이틀블록 Finish(${tb.finish.value})가 다릅니다.`, action: "노트와 타이틀블록 중 맞는 표면처리로 통일하세요.", evidence: `Note="${n.text}" / Finish="${tb.finish.value}"` });
+      const nm = kw(p.materialKeywords, n.text), tm = kw(p.materialKeywords, tb.material.value);
+      if (nm.length && tm.length && !nm.some((k) => tm.includes(k))) out.push({ loc: loc(n.page, "노트", n.b), detail: `노트의 재질(${nm.join(", ")})과 타이틀블록 Material(${tb.material.value})이 다릅니다.`, action: "노트와 타이틀블록 재질을 통일하세요.", evidence: `Note="${n.text}" / Material="${tb.material.value}"` });
+      const qm = n.text.match(/(?:ITEM|NO\.?|#)\s*(\d+)\D{0,20}?(\d+)\s*(?:EA|PCS|개)/i);
+      if (qm) { const r = doc.bom.find((x) => x.no === qm[1]); if (r && firstNum(r.qty) !== +qm[2]) out.push({ loc: loc(n.page, "노트", n.b), detail: `노트의 ${qm[1]}번 수량(${qm[2]})과 BOM 수량(${r.qty})이 다릅니다.`, action: "노트와 BOM 수량을 맞추세요.", evidence: n.text }); }
+    }
+    return out;
+  }
+};
+
+/* 사용자 정의 규칙 (설정 JSON의 customRules) */
+function runCustom(doc, cr) {
+  const out = []; const r = rx(cr.pattern || "");
+  const fail = (o) => out.push({ ...o, rule: cr.id, name: cr.name, detail: cr.message || `${cr.name} 규칙 위반`, action: cr.action || "", severity: cr.severity || "WARN" });
+  const [scope, field] = String(cr.target || "").split(".");
+  const test = (v) => cr.check === "required" ? !blank(v) : blank(v) ? true : cr.check === "forbidden" ? !r.test(v) : r.test(v);
+  if (scope === "titleblock") { const t = doc.titleblock[field]; if (t && !test(t.value)) fail({ loc: loc(t.page, `타이틀블록 ${field}`, t.b), evidence: `${field}="${t.value}"` }); }
+  else if (scope === "bom") { for (const row of doc.bom) if (!test(row[field])) fail({ loc: loc(row.page, `BOM #${row.no}`, row.b), evidence: `${field}="${row[field]}"` }); }
+  else if (scope === "notes") { const txt = doc.notes.map((n) => n.text).join("\n"); const ok = cr.check === "forbidden" ? !r.test(txt) : r.test(txt); if (!ok) fail({ loc: loc(0, "노트", doc.regions[0] && doc.regions[0].note), evidence: `노트 ${doc.notes.length}건` }); }
+  else if (scope === "dims") { for (const d of doc.dims) if (!test(d.text)) fail({ loc: loc(d.page, d.view || "도면 영역", d.b), evidence: d.text }); }
+  else if (scope === "alltext") { const ok = cr.check === "forbidden" ? !r.test(allText(doc)) : r.test(allText(doc)); if (!ok) fail({ loc: loc(0, "전체", null), evidence: cr.pattern }); }
+  return out;
+}
+
+function check(doc, cfg) {
+  const genRes = cfg.rules.R06.params.patterns.map((s) => rx(s));
+  const genTolPages = new Set(doc.notes.filter((n) => genRes.some((r) => r.test(n.text))).map((n) => n.page));
+  const ctx = { genTolPages };
+  const issues = [];
+  for (const [id, fn] of Object.entries(RULES)) {
+    const rc = cfg.rules[id]; if (!rc || !rc.enabled) continue;
+    try {
+      for (const it of fn(doc, rc.params || {}, ctx)) issues.push({ ...it, rule: id, name: RULE_META[id].name, cat: RULE_META[id].cat, severity: it.sevOverride || rc.severity });
+    } catch (e) { console.error(id, e); issues.push({ rule: id, name: RULE_META[id].name, cat: "시스템", severity: "INFO", loc: loc(0, "-", null), detail: `규칙 실행 중 오류: ${e.message}`, action: "설정 값을 확인하세요.", evidence: "" }); }
+  }
+  for (const cr of cfg.customRules || []) if (cr.enabled !== false) { try { issues.push(...runCustom(doc, cr).map((i) => ({ ...i, cat: "사용자 규칙" }))); } catch (e) { console.error(cr.id, e); } }
+  const order = { ERROR: 0, WARN: 1, INFO: 2 };
+  issues.sort((a, b) => order[a.severity] - order[b.severity] || a.loc.page - b.loc.page);
+  return issues;
+}
+
+/* ============================================================
+ * 6. 파이프라인
+ * ============================================================ */
+async function ingest(files, isSample = false) {
+  const t0 = performance.now();
+  const docs = [];
+  for (const f of files) {
+    const name = f.name; const ext = name.split(".").pop().toLowerCase();
+    try {
+      let doc;
+      if (ext === "pdf") doc = await extractPdf(name, new Uint8Array(f.bytes || await f.arrayBuffer()));
+      else if (ext === "dxf") doc = extractDxf(name, typeof f.text === "string" ? f.text : await f.text());
+      else if (ext === "json") doc = extractJson(name, typeof f.text === "string" ? f.text : await f.text());
+      else continue;
+      docs.push(analyze(doc, state.config));
+    } catch (e) {
+      console.error(name, e);
+      docs.push({ name, kind: "error", error: e.message || String(e), pages: [], bom: [], dims: [], notes: [], views: [], sheets: [], titleblock: {}, regions: [] });
+    }
+  }
+  if (!docs.length) { toast("검토할 수 있는 파일(PDF, DXF, JSON)이 없습니다."); return; }
+  state.docs = docs; state.cur = 0; state.page = 0; state.selected = null; state.isSample = isSample;
+  recheck();
+  state.elapsed = (performance.now() - t0) / 1000;
+  renderAll();
+}
+
+function recheck() {
+  let no = 0;
+  for (const d of state.docs) {
+    if (d.kind === "error") { d.issues = [{ no: ++no, rule: "SYS", name: "파일 읽기 실패", cat: "시스템", severity: "ERROR", loc: loc(0, "-", null), detail: d.error, action: "파일 형식·손상 여부를 확인하세요. SLDDRW는 PDF로 내보내거나 Python 추출기 JSON을 사용하세요.", evidence: d.name }]; continue; }
+    d.issues = check(d, state.config).map((i) => ({ ...i, no: ++no }));
+  }
+  const all = state.docs.flatMap((d) => d.issues);
+  console.table(state.docs.map((d) => ({ 파일: d.name, 오류: d.issues.filter((i) => i.severity === "ERROR").length, 경고: d.issues.filter((i) => i.severity === "WARN").length, 정보: d.issues.filter((i) => i.severity === "INFO").length })));
+  console.info(`[도면 검토] 파일 ${state.docs.length}건 · 지적 ${all.length}건`);
+}
+
+/* ============================================================
+ * 7. 화면 렌더링
+ * ============================================================ */
+function renderAll() { renderSummary(); renderFiles(); renderIssues(); renderSheet(); renderData(); }
+
+function renderSummary() {
+  const all = state.docs.flatMap((d) => d.issues);
+  const c = (s) => all.filter((i) => i.severity === s).length;
+  $("summary").innerHTML =
+    (state.isSample ? '<span class="sample-flag">샘플 도면</span>' : "") +
+    `<span class="count"><b>${state.docs.length}</b> 파일</span>` +
+    `<span class="count err"><b>${c("ERROR")}</b> 오류</span>` +
+    `<span class="count warn"><b>${c("WARN")}</b> 경고</span>` +
+    `<span class="count"><b>${c("INFO")}</b> 정보</span>` +
+    `<span class="mono">${state.elapsed.toFixed(2)} s</span>`;
+}
+
+function renderFiles() {
+  $("fileList").innerHTML = state.docs.map((d, i) => {
+    const e = d.issues.filter((x) => x.severity === "ERROR").length, w = d.issues.filter((x) => x.severity === "WARN").length;
+    return `<li><button type="button" data-i="${i}" aria-current="${i === state.cur}"><span class="fname" title="${esc(d.name)}">${esc(d.name)}</span><span class="fcount"><span class="e">${e}</span> · ${w}</span></button></li>`;
+  }).join("");
+}
+
+function renderIssues() {
+  const d = state.docs[state.cur];
+  const list = (d ? d.issues : []).filter((i) => state.filter === "ALL" || i.severity === state.filter);
+  $("issueList").innerHTML = list.length ? list.map((i) => `
+    <li class="issue" role="option" tabindex="0" data-no="${i.no}" aria-selected="${state.selected === i.no}">
+      <span class="no">#${i.no}</span>
+      <div>
+        <div class="title"><span class="sev ${i.severity}">${SEV_KO[i.severity]}</span>${esc(i.name)} <span class="rid">${esc(i.rule)}</span></div>
+        <div class="detail">${esc(i.detail)}</div>
+        <div class="meta">Sheet ${i.loc.page + 1} · ${esc(i.loc.area)}${i.loc.b ? " · " + fmtMm(i.loc.b) : ""}</div>
+        ${i.action ? `<div class="fix">${esc(i.action)}</div>` : ""}
+      </div>
+    </li>`).join("") : `<li class="empty">${d ? "이 조건의 지적 사항이 없습니다." : "파일을 열어 주세요."}</li>`;
+}
+
+let renderToken = 0;
+async function renderSheet() {
+  const d = state.docs[state.cur];
+  const canvas = $("canvas"), ov = $("overlay"), sheet = $("sheet");
+  ov.innerHTML = "";
+  const n = d ? d.pages.length : 0;
+  $("pgLabel").textContent = n ? `${state.page + 1} / ${n}` : "-";
+  $("pgPrev").disabled = state.page <= 0; $("pgNext").disabled = state.page >= n - 1;
+  const old = sheet.querySelector(".no-image"); if (old) old.remove();
+  if (!d || d.kind === "json" || d.kind === "error" || !n) {
+    canvas.hidden = true; sheet.style.width = "100%";
+    const div = document.createElement("div"); div.className = "no-image";
+    div.textContent = !d ? "파일을 열어 주세요." : d.kind === "json" ? "JSON 입력은 도면 이미지가 없습니다. 지적 사항과 추출 데이터만 표시합니다." : `파일을 읽지 못했습니다: ${d.error || ""}`;
+    sheet.appendChild(div); return;
+  }
+  canvas.hidden = false;
+  const pg = d.pages[state.page];
+  const wrapW = $("sheetWrap").clientWidth - 24;
+  const scale = Math.max(0.3, wrapW / pg.w);
+  sheet.style.width = `${pg.w * scale}px`;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const token = ++renderToken;
+  if (d.kind === "pdf") {
+    const page = await d.pdf.getPage(state.page + 1);
+    if (token !== renderToken) return;
+    const vp = page.getViewport({ scale: scale * dpr });
+    canvas.width = vp.width; canvas.height = vp.height;
+    await page.render({ canvasContext: canvas.getContext("2d"), viewport: vp }).promise.catch(() => {});
+  } else drawDxf(d, canvas, scale * dpr, pg);
+  if (token !== renderToken) return;
+  drawOverlay(d, pg);
+}
+
+function drawDxf(d, canvas, s, pg) {
+  canvas.width = pg.w * s; canvas.height = pg.h * s;
+  const g = canvas.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, canvas.width, canvas.height);
+  g.strokeStyle = "#222"; g.lineWidth = Math.max(1, s * 0.4); g.fillStyle = "#111";
+  const X = (x) => d.tx(x) * s, Y = (y) => d.ty(y) * s;
+  for (const e of d.geo) {
+    g.beginPath();
+    if (e.type === "CIRCLE") g.arc(X(e.center.x), Y(e.center.y), e.radius * d.k * s, 0, Math.PI * 2);
+    else if (e.type === "ARC") g.arc(X(e.center.x), Y(e.center.y), e.radius * d.k * s, -e.endAngle, -e.startAngle);
+    else if (e.vertices) { e.vertices.forEach((v, i) => (i ? g.lineTo(X(v.x), Y(v.y)) : g.moveTo(X(v.x), Y(v.y)))); if (e.shape) g.closePath(); }
+    g.stroke();
+  }
+  for (const p of pg.phrases) { g.font = `${p.h * s}px Helvetica, Arial, sans-serif`; g.save(); if (p.rot) { g.translate(p.b[2] * s, p.b[3] * s); g.rotate(-Math.PI / 2); g.fillText(p.str, 0, 0); } else g.fillText(p.str, p.b[0] * s, p.b[3] * s); g.restore(); }
+}
+
+function drawOverlay(d, pg) {
+  const ov = $("overlay"); ov.innerHTML = "";
+  const put = (b, cls, html = "") => {
+    if (!b) return null;
+    const el = document.createElement("div"); el.className = `box ${cls}`;
+    el.style.left = `${(b[0] / pg.w) * 100}%`; el.style.top = `${(b[1] / pg.h) * 100}%`;
+    el.style.width = `${((b[2] - b[0]) / pg.w) * 100}%`; el.style.height = `${((b[3] - b[1]) / pg.h) * 100}%`;
+    el.innerHTML = html; ov.appendChild(el); return el;
+  };
+  const R = d.regions[state.page] || {};
+  if ($("lyTb").checked) put(R.tb, "layer-tb");
+  if ($("lyBom").checked) put(R.bom, "layer-bom");
+  if ($("lyNote").checked) put(R.note, "layer-note");
+  if ($("lyDim").checked) d.dims.filter((x) => x.page === state.page).forEach((x) => put(pad(x.b, 1), "layer-dim"));
+  if ($("lyIssue").checked) {
+    const seen = {};
+    for (const i of d.issues.filter((i) => i.loc.page === state.page && i.loc.b && (state.filter === "ALL" || i.severity === state.filter))) {
+      const k = i.loc.b.join(","); const n = (seen[k] = (seen[k] || 0) + 1) - 1;
+      const el = put(pad(i.loc.b, 3), `issue-box${state.selected === i.no ? " sel" : ""}`, `<span class="tag" style="left:${-11 + n * 24}px">${i.no}</span>`);
+      el.title = `#${i.no} ${i.name}: ${i.detail}`; el.dataset.no = i.no;
+    }
+  }
+}
+
+function renderData() {
+  const d = state.docs[state.cur];
+  $("dataSrc").textContent = d ? `출처: ${d.kind.toUpperCase()}` : "";
+  if (!d || d.kind === "error") { $("dataTable").innerHTML = '<div class="empty">추출 데이터가 없습니다.</div>'; return; }
+  const cell = (v, cls = "") => blank(v) ? `<td class="blank">(공란)</td>` : `<td class="${cls}">${esc(v)}</td>`;
+  let html = "";
+  if (state.tab === "tb") {
+    html = `<table><thead><tr><th>항목</th><th>값</th><th>날짜</th><th>시트</th><th>위치</th></tr></thead><tbody>` +
+      TB_FIELDS.map(([f, l]) => { const r = d.titleblock[f] || {}; const isSig = ["prepared", "checked", "approved"].includes(f); return `<tr><td>${l}</td>${cell(r.value)}${isSig ? cell(r.date, "mono") : "<td></td>"}<td class="num">${(r.page ?? 0) + 1}</td><td class="mono">${fmtMm(r.b)}</td></tr>`; }).join("") + "</tbody></table>";
+  } else if (state.tab === "bom") {
+    html = d.bom.length ? `<table><thead><tr>${BOM_FIELDS.map(([, l]) => `<th>${l}</th>`).join("")}<th>풍선</th></tr></thead><tbody>` +
+      d.bom.map((r) => `<tr>${BOM_FIELDS.map(([f]) => (f === "remark" ? `<td>${esc(r[f])}</td>` : cell(r[f], f === "qty" || f === "no" ? "num" : ""))).join("")}<td class="num">${r.instances != null ? `inst ${r.instances}` : d.balloons.filter((b) => b.no === r.no).length}</td></tr>`).join("") + "</tbody></table>" : '<div class="empty">BOM 표를 찾지 못했습니다. 헤더명이 다르면 설정의 bomHeaders를 고치세요.</div>';
+  } else if (state.tab === "dim") {
+    const tk = { none: "없음", symmetric: "대칭 ±", deviation: "편차", fit: "끼워맞춤", reference: "참고치수", basic: "기본치수" };
+    html = d.dims.length ? `<table><thead><tr><th>#</th><th>표시 치수</th><th>공칭값</th><th>공차</th><th>유형</th><th>뷰</th><th>시트</th><th>위치</th></tr></thead><tbody>` +
+      d.dims.map((x, i) => `<tr><td class="num">${i + 1}</td><td class="mono">${esc(x.text)}</td><td class="num">${x.prefix || ""}${x.nominal ?? ""}${x.angle ? "°" : ""}</td><td class="mono">${esc(x.tol || x.tolOverride || "")}</td><td>${tk[x.tolType] || esc(x.tolType || "")}</td><td>${esc(x.view || "")}</td><td class="num">${x.page + 1}</td><td class="mono">${fmtMm(x.b)}</td></tr>`).join("") + "</tbody></table>" : '<div class="empty">치수를 찾지 못했습니다.</div>';
+  } else if (state.tab === "note") {
+    html = d.notes.length ? `<table><thead><tr><th>구분</th><th>내용</th><th>시트</th><th>위치</th></tr></thead><tbody>` +
+      d.notes.map((n) => `<tr><td>${n.kind === "General" ? "General" : "Specific"}</td><td>${esc(n.text)}</td><td class="num">${n.page + 1}</td><td class="mono">${fmtMm(n.b)}</td></tr>`).join("") + "</tbody></table>" : '<div class="empty">노트를 찾지 못했습니다.</div>';
+  } else {
+    html = `<table><thead><tr><th>시트</th><th>용지</th><th>척도</th><th>뷰</th></tr></thead><tbody>` +
+      d.sheets.map((s) => `<tr><td>${esc(s.name)}</td><td class="mono">${esc(s.size)}</td><td class="mono">${esc(s.scale)}</td><td>${esc(d.views.filter((v) => v.page === s.page).map((v) => v.name + (v.scale ? ` (${v.scale})` : "")).join(", ") || "-")}</td></tr>`).join("") + "</tbody></table>";
+  }
+  $("dataTable").innerHTML = html;
+}
+
+function selectIssue(no) {
+  const d = state.docs[state.cur]; const i = d.issues.find((x) => x.no === no); if (!i) return;
+  state.selected = no;
+  const changed = i.loc.page !== state.page;
+  state.page = i.loc.page;
+  renderIssues();
+  if (changed) renderSheet().then(() => scrollToSel()); else { drawOverlay(d, d.pages[state.page] || { w: 1, h: 1 }); scrollToSel(); }
+}
+function scrollToSel() { const el = $("overlay").querySelector(".issue-box.sel"); if (el) el.scrollIntoView({ block: "center", inline: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
+
+/* ============================================================
+ * 8. 리포터 — Excel / 레드마킹 PDF
+ * ============================================================ */
+function exportExcel() {
+  if (!state.docs.length) return toast("먼저 파일을 열어 주세요.");
+  const wb = XLSX.utils.book_new();
+  const head = ["No", "파일명", "시트", "위치/뷰", "좌표(mm)", "문제 유형", "상세 내용", "심각도", "권장 조치", "근거", "규칙 ID"];
+  const rows = state.docs.flatMap((d) => d.issues.map((i) => [i.no, d.name, i.loc.page + 1, i.loc.area, fmtMm(i.loc.b), i.name, i.detail, SEV_KO[i.severity], i.action, i.evidence, i.rule]));
+  const s1 = XLSX.utils.aoa_to_sheet([head, ...rows]);
+  s1["!cols"] = [6, 26, 6, 22, 16, 22, 60, 8, 44, 36, 8].map((w) => ({ wch: w }));
+  s1["!autofilter"] = { ref: `A1:K${rows.length + 1}` };
+  XLSX.utils.book_append_sheet(wb, s1, "오류리스트");
+  const a = [];
+  for (const d of state.docs) {
+    if (d.kind === "error") { a.push([`■ ${d.name}`, "읽기 실패", d.error], []); continue; }
+    a.push([`■ ${d.name}`, `출처: ${d.kind.toUpperCase()}`], ["[타이틀블록]", "항목", "값", "날짜", "시트"]);
+    TB_FIELDS.forEach(([f, l]) => { const r = d.titleblock[f] || {}; a.push(["", l, r.value || "", r.date || "", (r.page ?? 0) + 1]); });
+    a.push([], ["[BOM]", ...BOM_FIELDS.map(([, l]) => l), "시트"]);
+    d.bom.forEach((r) => a.push(["", ...BOM_FIELDS.map(([f]) => r[f]), r.page + 1]));
+    a.push([], ["[치수]", "표시 치수", "공칭값", "공차", "공차 유형", "뷰", "시트", "좌표(mm)"]);
+    d.dims.forEach((x) => a.push(["", x.text, x.nominal ?? "", x.tol || "", x.tolType, x.view || "", x.page + 1, fmtMm(x.b)]));
+    a.push([], ["[노트]", "구분", "내용", "시트"]);
+    d.notes.forEach((n) => a.push(["", n.kind, n.text, n.page + 1]));
+    a.push([], ["[뷰·시트]", "시트", "용지", "척도", "뷰"]);
+    d.sheets.forEach((s) => a.push(["", s.name, s.size, s.scale, d.views.filter((v) => v.page === s.page).map((v) => v.name).join(", ")]));
+    a.push([], []);
+  }
+  const s2 = XLSX.utils.aoa_to_sheet(a);
+  s2["!cols"] = [22, 22, 30, 18, 16, 16, 14, 18].map((w) => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, s2, "추출데이터");
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveFile(`${stamp()}_drawing-review.xlsx`, new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+}
+
+async function exportRedmark() {
+  const d = state.docs[state.cur];
+  if (!d || d.kind !== "pdf") return toast("레드마킹은 PDF 파일에서만 만들 수 있습니다.");
+  const { PDFDocument, rgb, StandardFonts } = PDFLib;
+  const pdf = await PDFDocument.load(d.bytes.slice(0));
+  const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const red = rgb(0.82, 0.17, 0.13);
+  const ascii = (s) => String(s).replace(/[^\x20-\x7E]/g, "?");
+  const pages = pdf.getPages();
+  pages.forEach((page, pi) => {
+    const box = page.getCropBox(); const H = box.height;
+    const list = d.issues.filter((i) => i.loc.page === pi);
+    const seen = {};
+    for (const i of list.filter((i) => i.loc.b)) {
+      const b = pad(i.loc.b, 3);
+      const k = i.loc.b.join(","); const n = (seen[k] = (seen[k] || 0) + 1) - 1;
+      const x = box.x + b[0] + n * 16, y = box.y + H - b[3];
+      if (!n) page.drawRectangle({ x, y, width: b[2] - b[0], height: b[3] - b[1], borderColor: red, borderWidth: 1.4, color: red, opacity: 0.06, borderOpacity: 1 });
+      const t = String(i.no), tw = bold.widthOfTextAtSize(t, 7);
+      page.drawCircle({ x, y: y + (b[3] - b[1]), size: Math.max(6, tw / 2 + 3), color: red });
+      page.drawText(t, { x: x - tw / 2, y: y + (b[3] - b[1]) - 2.5, size: 7, font: bold, color: rgb(1, 1, 1) });
+    }
+    const unloc = list.filter((i) => !i.loc.b);
+    if (unloc.length) {
+      const lines = unloc.map((i) => ascii(`#${i.no} [${i.rule}] ${(RULE_META[i.rule] && RULE_META[i.rule].en) || i.rule}`));
+      const w = Math.max(...lines.map((l) => font.widthOfTextAtSize(l, 7))) + 12, h = lines.length * 10 + 18;
+      const x0 = box.x + 40, y0 = box.y + H - 40 - h;
+      page.drawRectangle({ x: x0, y: y0, width: w, height: h, borderColor: red, borderWidth: 1, color: rgb(1, 1, 1), opacity: 0.9 });
+      page.drawText("REVIEW - NO LOCATION", { x: x0 + 6, y: y0 + h - 11, size: 7, font: bold, color: red });
+      lines.forEach((l, k) => page.drawText(l, { x: x0 + 6, y: y0 + h - 22 - k * 10, size: 7, font, color: red }));
+    }
+  });
+  const out = await pdf.save();
+  saveFile(d.name.replace(/\.pdf$/i, "") + "_redmark.pdf", new Blob([out], { type: "application/pdf" }));
+}
+
+/* ============================================================
+ * 9. 샘플 도면 생성 (예시 데이터 — 실제 사내 도면 아님)
+ * ============================================================ */
+async function makeSample(kind) {
+  const { PDFDocument, StandardFonts, rgb } = PDFLib;
+  const pdf = await PDFDocument.create();
+  const W = 1190.55, H = 841.89;
+  const page = pdf.addPage([W, H]);
+  const f = await pdf.embedFont(StandardFonts.Helvetica), fb = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const ink = rgb(0.1, 0.1, 0.12), thin = rgb(0.35, 0.35, 0.4);
+  const T = (s, x, yTop, size = 8, bold = false) => page.drawText(s, { x, y: H - yTop, size, font: bold ? fb : f, color: ink });
+  const Rct = (x, yTop, w, h, t = 0.8) => page.drawRectangle({ x, y: H - yTop - h, width: w, height: h, borderColor: ink, borderWidth: t });
+  const Ln = (x1, y1, x2, y2, t = 0.5) => page.drawLine({ start: { x: x1, y: H - y1 }, end: { x: x2, y: H - y2 }, thickness: t, color: thin });
+  const Cir = (x, yTop, r, t = 0.8) => page.drawCircle({ x, y: H - yTop, size: r, borderColor: ink, borderWidth: t });
+  Rct(28, 28, W - 56, H - 56, 1.4);
+  // 타이틀블록
+  Rct(600, 690, 562, 124);
+  [[790, 690, 790, 814], [600, 724, 790, 724], [600, 754, 790, 754], [600, 784, 790, 784], [790, 724, 1162, 724], [790, 758, 1162, 758], [790, 792, 1162, 792], [990, 690, 990, 724], [870, 724, 870, 758], [950, 724, 950, 792], [1030, 724, 1030, 758]].forEach(([a, b, c, e]) => Ln(a, b, c, e, 0.6));
+  const tbv = kind === 1
+    ? { title: "PURGE NOZZLE BRACKET ASSY", dwg: "JS-SAMPLE-0001", type: "ASSY", code: "JS10-0001", scale: "1:2", date: "2026-11-02", mat: "A6061-T6", fin: "NI PLATING", sig: [["PREPARED", "H.LEE", "2026-11-02"], ["CHECKED", "J.KIM", "2026-10-30"], ["APPROVED", "", ""]] }
+    : { title: "SENSOR COVER", dwg: "JS-SAMPLE-0002", type: "PART", code: "JS10-0002", scale: "1:1", date: "2026-11-05", mat: "SUS304", fin: "ELECTROPOLISHING", sig: [["PREPARED", "H.LEE", "2026-11-03"], ["CHECKED", "J.KIM", "2026-11-04"], ["APPROVED", "S.PARK", "2026-11-05"]] };
+  T("TITLE", 795, 700, 6); T(tbv.title, 795, 716, 10, true);
+  T("DWG NO", 995, 700, 6); T(tbv.dwg, 995, 716, 10, true);
+  T("TYPE", 795, 734, 6); T(tbv.type, 795, 750, 9);
+  T("ITEM CODE", 875, 734, 6); T(tbv.code, 875, 750, 9);
+  T("SCALE", 955, 734, 6); T(tbv.scale, 955, 750, 9);
+  T("DATE", 1035, 734, 6); T(tbv.date, 1035, 750, 9);
+  T("MATERIAL", 795, 768, 6); T(tbv.mat, 795, 784, 9);
+  T("FINISH", 955, 768, 6); T(tbv.fin, 955, 784, 9);
+  T("JUSTEM SAMPLE - NOT FOR PRODUCTION", 795, 806, 6);
+  tbv.sig.forEach(([l, n, dt], k) => { const y = 712 + k * 30; T(l, 606, y, 7); if (n) T(n, 668, y, 8); if (dt) T(dt, 720, y, 7); });
+  T("SHEET 1 OF 1", 606, 805, 6);
+  if (kind === 1) {
+    // BOM (헤더 위, 행 아래)
+    Rct(600, 548, 562, 136);
+    const cx = [605, 630, 735, 840, 932, 962, 1060];
+    ["NO", "DWG / VENDOR NO", "PART NAME", "SIZE", "QTY", "MATERIAL", "REMARK"].forEach((h, i) => T(h, cx[i], 562, 7, true));
+    Ln(600, 568, 1162, 568, 0.6);
+    const rows = [["1", "JS-SAMPLE-0001-01", "BASE PLATE", "120x80x10", "1", "A6061-T6", ""], ["2", "SMC KQ2H06-01AS", "FITTING", "1/8\"", "2", "-", "PURCHASED"], ["3", "JS-SAMPLE-0001-03", "TUBE 40", "Ø45x200", "1", "SUS316L", ""], ["4", "JS-SAMPLE-0001-04", "COVER", "120x80x2", "1", "", ""]];
+    rows.forEach((r, k) => { r.forEach((v, i) => v && T(v, cx[i], 584 + k * 22, 7)); Ln(600, 590 + k * 22, 1162, 590 + k * 22, 0.3); });
+    // 정면도
+    Rct(120, 180, 360, 240, 1.2); Cir(300, 300, 40); Cir(160, 220, 9); Cir(440, 220, 9); Cir(160, 380, 9); Cir(440, 380, 9);
+    Ln(120, 160, 480, 160); Ln(120, 150, 120, 180); Ln(480, 150, 480, 180); T("120 ±0.1", 278, 156, 9);
+    Ln(100, 180, 100, 420); Ln(90, 180, 120, 180); Ln(90, 420, 120, 420); T("80", 82, 304, 9);
+    Ln(300, 300, 360, 250); T("Ø40 H7", 362, 248, 9);
+    T("4X Ø9 THRU", 452, 214, 8); T("R5", 486, 176, 9); T("C1", 486, 432, 9);
+    Ln(120, 440, 300, 440); T("(60)", 196, 452, 9);
+    T("MASK THIS SURFACE", 330, 470, 8);
+    // 풍선
+    [["1", 150, 128], ["2", 432, 128], ["3", 520, 300]].forEach(([n, x, y]) => { Cir(x + 2.5, y - 3, 9); T(n, x, y, 9, true); });
+    // 단면도
+    Rct(160, 530, 300, 60, 1.2); Ln(160, 515, 460, 515); T("200", 300, 510, 9); T("Ø45", 470, 564, 9);
+    T("SECTION A-A  SCALE 1:2", 245, 620, 9, true);
+    T("FRONT VIEW  SCALE 1:2", 230, 488, 9, true);
+    // 노트
+    T("NOTES", 40, 690, 10, true);
+    T("1. GENERAL TOLERANCE: KS B ISO 2768-m", 40, 708, 8);
+    T("2. FINISH: BLACK ANODIZING", 40, 722, 8);
+    T("3. REMOVE ALL BURRS.", 40, 736, 8);
+  } else {
+    Rct(160, 200, 400, 260, 1.2); Cir(240, 280, 10); Cir(480, 280, 10); Cir(360, 330, 20);
+    Ln(160, 180, 560, 180); T("120", 350, 176, 9);
+    Ln(140, 200, 140, 460); T("80", 120, 334, 9);
+    T("2X Ø6.6 THRU", 492, 266, 8);
+    T("Ø10 ±0.02", 386, 312, 9);
+    Rct(620, 220, 30, 260, 1.2); Ln(620, 500, 650, 500); T("2", 630, 516, 9); T("+0.1", 638, 512, 6); T("0", 638, 520, 6);
+    T("FRONT VIEW  SCALE 1:1", 280, 500, 9, true);
+    T("DETAIL B  SCALE 2:1", 600, 540, 9, true);
+    T("NOTES", 40, 690, 10, true);
+    T("1. BREAK ALL SHARP EDGES C0.3 MAX.", 40, 708, 8);
+    T("2. REMOVE ALL BURRS.", 40, 722, 8);
+  }
+  return { name: kind === 1 ? "SAMPLE_JS-SAMPLE-0001_ASSY.pdf" : "SAMPLE_JS-SAMPLE-0002_COVER.pdf", bytes: await pdf.save() };
+}
+
+async function loadSamples() {
+  try { await ingest([await makeSample(1), await makeSample(2)], true); }
+  catch (e) { console.error(e); toast("샘플을 만들지 못했습니다. 라이브러리 로딩을 확인하세요."); }
+}
+
+/* ============================================================
+ * 10. 이벤트
+ * ============================================================ */
+function bind() {
+  $("fileInput").addEventListener("change", (e) => { if (e.target.files.length) ingest([...e.target.files]); e.target.value = ""; });
+  $("folderInput").addEventListener("change", (e) => { const fs = [...e.target.files].filter((f) => /\.(pdf|dxf|json)$/i.test(f.name)); if (fs.length) ingest(fs); else toast("폴더에 PDF·DXF·JSON 파일이 없습니다."); e.target.value = ""; });
+  $("btnSample").addEventListener("click", loadSamples);
+  $("btnExcel").addEventListener("click", exportExcel);
+  $("btnRedmark").addEventListener("click", () => exportRedmark().catch((e) => { console.error(e); toast(`레드마킹 실패: ${e.message}`); }));
+  $("fileList").addEventListener("click", (e) => { const b = e.target.closest("button[data-i]"); if (!b) return; state.cur = +b.dataset.i; state.page = 0; state.selected = null; renderFiles(); renderIssues(); renderSheet(); renderData(); });
+  $("issueList").addEventListener("click", (e) => { const li = e.target.closest(".issue"); if (li) selectIssue(+li.dataset.no); });
+  $("issueList").addEventListener("keydown", (e) => { const li = e.target.closest(".issue"); if (li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); selectIssue(+li.dataset.no); } });
+  $("overlay").addEventListener("click", (e) => { const b = e.target.closest(".issue-box"); if (!b) return; selectIssue(+b.dataset.no); const li = $("issueList").querySelector(`[data-no="${b.dataset.no}"]`); if (li) li.scrollIntoView({ block: "nearest" }); });
+  document.querySelectorAll(".chip").forEach((c) => c.addEventListener("click", () => { state.filter = c.dataset.f; document.querySelectorAll(".chip").forEach((x) => x.setAttribute("aria-pressed", x === c)); renderIssues(); const d = state.docs[state.cur]; if (d && d.pages[state.page]) drawOverlay(d, d.pages[state.page]); }));
+  ["lyIssue", "lyTb", "lyBom", "lyDim", "lyNote"].forEach((id) => $(id).addEventListener("change", () => { const d = state.docs[state.cur]; if (d && d.pages[state.page] && d.kind !== "json") drawOverlay(d, d.pages[state.page]); }));
+  $("pgPrev").addEventListener("click", () => { if (state.page > 0) { state.page--; renderSheet(); } });
+  $("pgNext").addEventListener("click", () => { const d = state.docs[state.cur]; if (d && state.page < d.pages.length - 1) { state.page++; renderSheet(); } });
+  $("tabs").addEventListener("click", (e) => { const t = e.target.closest(".tab"); if (!t) return; state.tab = t.dataset.t; document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-selected", x === t)); renderData(); });
+  $("cfgApply").addEventListener("click", () => {
+    try {
+      const c = JSON.parse($("cfgText").value);
+      if (!c.rules || !c.labels || !c.bomHeaders) throw new Error("rules, labels, bomHeaders 항목이 필요합니다.");
+      for (const k of Object.keys(DEFAULT_CONFIG.rules)) if (!c.rules[k]) c.rules[k] = structuredClone(DEFAULT_CONFIG.rules[k]);
+      c.layout = { ...DEFAULT_CONFIG.layout, ...(c.layout || {}) };
+      state.config = c; storeConfig(c);
+      state.docs = state.docs.map((d) => (d.kind === "error" || d.fromJson ? d : analyze(d, c)));
+      recheck(); renderAll();
+      $("cfgMsg").className = "msg ok"; $("cfgMsg").textContent = "적용했습니다. 모든 파일을 다시 검토했습니다.";
+    } catch (e) { $("cfgMsg").className = "msg err"; $("cfgMsg").textContent = `설정을 적용하지 못했습니다: ${e.message}`; }
+  });
+  $("cfgReset").addEventListener("click", () => { $("cfgText").value = JSON.stringify(DEFAULT_CONFIG, null, 2); $("cfgMsg").className = "msg"; $("cfgMsg").textContent = "기본값을 불러왔습니다. '적용 후 재검토'를 눌러야 반영됩니다."; });
+  $("cfgSave").addEventListener("click", () => saveFile("drawing-checker-rules.json", $("cfgText").value));
+  let dragN = 0;
+  addEventListener("dragenter", (e) => { e.preventDefault(); dragN++; $("dropHint").hidden = false; });
+  addEventListener("dragleave", () => { if (--dragN <= 0) { dragN = 0; $("dropHint").hidden = true; } });
+  addEventListener("dragover", (e) => e.preventDefault());
+  addEventListener("drop", (e) => { e.preventDefault(); dragN = 0; $("dropHint").hidden = true; const fs = [...e.dataTransfer.files]; if (fs.length) ingest(fs); });
+  let rT; addEventListener("resize", () => { clearTimeout(rT); rT = setTimeout(renderSheet, 150); });
+}
+
+function start() {
+  state.config = loadConfig();
+  $("cfgText").value = JSON.stringify(state.config, null, 2);
+  bind();
+  if (!window.pdfjsLib || !window.PDFLib) { renderAll(); toast("PDF 라이브러리를 불러오지 못했습니다. 네트워크를 확인하세요."); return; }
+  loadSamples();
+}
+start();
+</script>
